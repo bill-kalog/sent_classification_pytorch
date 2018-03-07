@@ -104,6 +104,8 @@ class Attention(object):
     def __init__(self, hidden_dim):
         super(Attention, self).__init__()
         self.hidden_dim = hidden_dim
+        # use a single fc layer to get a score
+        self.att_nn = nn.Linear(self.hidden_dim, 1)
 
     def forward(self, hidden_vector, encoder_output):
         pass
