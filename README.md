@@ -1,6 +1,9 @@
 ## Description
 model variants for text classification written in [PyTorch](http://pytorch.org/).
-Some of the code structure is based on examples from [spro](https://github.com/spro/practical-pytorch)
+Some of the code structure is based on examples from [spro](https://github.com/spro/practical-pytorch).
+At the moment the following models are implemented:
+* vanilla RNN with GRU cells `class RNN_s`
+* vanilla RNN with GRU cells and attention on top `class RNN_encoder`
 
 ### install torchtext
 in order to run this code apart from [PyTorch](http://pytorch.org/) you need [torchtext](https://github.com/pytorch/text/tree/master/torchtext) too.

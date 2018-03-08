@@ -59,6 +59,17 @@ def perform_forward_pass(
     return acc, loss, h_l
 
 
+def train_step(d_batch, model, optimizer, loss_function):
+    '''
+    Do a single train step
+     TODO
+    '''
+    optimizer.zero_grad()
+    outputs, h_n = model(d_batch.text[0], sentences_length=d_batch.text[1])
+    # loss = loss_function(l_probs, d_batch.label - 1)
+    return
+
+
 writer = SummaryWriter()
 
 
@@ -88,6 +99,7 @@ dev_iter2.init_epoch()
 gru_model = RNN_encoder(
     input_dim=inputs.vocab.vectors.size()[1],
     output_dim=200,
+    num_classes=len(answers.vocab.freqs.keys()),
     vocab=inputs.vocab)
 gru_model.cuda(0)
 
@@ -113,10 +125,14 @@ for batch_idx, batch in enumerate(train_iter):
     gru_model.train()
     optimizer.zero_grad()
 
+    train_step(batch, gru_model, optimizer, loss_function)
+    # TODO refactor training loop
+
     # pass training batch
     # acc, loss, _ = perform_forward_pass(batch, gru_model, loss_function)
     acc, loss, _ = perform_forward_pass(
         batch, gru_model, loss_function)
+
     loss.backward()
     optimizer.step()
     train_acc_list.append(acc)
