@@ -11,6 +11,7 @@ from sequential_models import RNN_encoder
 
 import matplotlib.pyplot as plt
 import numpy as np
+import json
 from IPython import embed
 
 
@@ -19,6 +20,7 @@ from IPython import embed
 # https://medium.com/@dexterhuang/tensorboard-for-pytorch-201a228533c5
 from tensorboardX import SummaryWriter
 
+config = {'attention': True}
 
 def load_data():
     '''
@@ -45,9 +47,13 @@ def perform_forward_pass(
     perform the forward pass of a model  for a given batch of data
     and return its loss and accuracy
     '''
-
-    # get log probabilities
-    l_probs, h_l = model(d_batch.text[0], sentences_length=d_batch.text[1])
+    if config['attention']:
+        l_probs, h_l, attention_weights = model(
+            d_batch.text[0], sentences_length=d_batch.text[1])
+    else:
+        # get log probabilities
+        l_probs, h_l = model(
+            d_batch.text[0], sentences_length=d_batch.text[1])
 
     # calculate loss
     loss = loss_function(l_probs, d_batch.label - 1)
@@ -57,6 +63,57 @@ def perform_forward_pass(
         / predictions.size()[0]
 
     return acc, loss, h_l
+
+
+def get_attention_weights(d_batch, model, vocab_input, vocab_output):
+    '''
+    save attention distributions in a json file
+    '''
+    file_path = 'weights'
+    l_probs, h_l, attention_weights = model(
+        d_batch.text[0], sentences_length=d_batch.text[1])
+    _, predictions = torch.max(l_probs.data, 1)
+    dic_ = {}
+    for sentence_counter in range(len(d_batch.text[0])):
+        # gather all information we want to store
+        # sentence_in_numbers = d_batch.text[0][sentence_counter]
+        sentence_length = d_batch.text[1][sentence_counter]
+        prob_distribution = attention_weights[sentence_counter, :, :].data.tolist()[0]
+        pred_label = predictions[sentence_counter]
+        actual_label = d_batch.label[sentence_counter] - 1
+        # get text from integers
+        int2text = [vocab_input.itos[int(ind)] for ind in list(
+            d_batch.text[0][sentence_counter])]
+        pred_label2text = vocab_output.itos[pred_label + 1]
+        actual_label2text = vocab_output.itos[int(actual_label) + 1]
+
+        temp = []
+        for index_ in range(len(int2text)):
+            temp.append((int2text[index_], prob_distribution[index_]))
+
+        dic_['sent_id_' + str(sentence_counter)] = {
+            "mass": sum(prob_distribution[:sentence_length]),
+            "sentence_length": sentence_length,
+            "pred_label": pred_label2text,
+            "actual_label": actual_label2text,
+            "sentence": temp
+
+        }
+
+        # # uncomment to have distr and sentence in different lists
+        # dic_['sent_id_' + str(sentence_counter)] = {
+        #     "mass": sum(prob_distribution[:sentence_length]),
+        #     "sentence_length": sentence_length,
+        #     "pred_label": pred_label2text,
+        #     "actual_label": actual_label2text,
+        #     "dist": prob_distribution,
+        #     "text": int2text
+
+        # }
+    json.dump(dic_, open(file_path + ".json", 'w'), indent="\t")
+    print("Saved attention weights file at: {}".format(
+        file_path + ".json"))
+    embed()
 
 
 def train_step(d_batch, model, optimizer, loss_function):
@@ -85,6 +142,10 @@ train_iter.init_epoch()
 dev_iter2, test_iter2 = data.BucketIterator.splits(
     (dev, test), batch_size=len(dev.examples), device=0, sort_within_batch=True)
 dev_iter2.init_epoch()
+
+dev_iter3, test_iter3 = data.BucketIterator.splits(
+    (dev, test), batch_size=len(test.examples), device=0, sort_within_batch=True)
+test_iter3.init_epoch()
 
 
 # define a model
@@ -125,7 +186,7 @@ for batch_idx, batch in enumerate(train_iter):
     gru_model.train()
     optimizer.zero_grad()
 
-    train_step(batch, gru_model, optimizer, loss_function)
+    # train_step(batch, gru_model, optimizer, loss_function)
     # TODO refactor training loop
 
     # pass training batch
@@ -153,6 +214,13 @@ for batch_idx, batch in enumerate(train_iter):
     if max_acc < acc:
         max_acc = acc
         acc_step = batch_idx
+        #### test the current best model against our test set ####
+        # TODO
+        test_batch = next(iter(test_iter3))
+        t_acc, t_loss, _ = perform_forward_pass(
+            test_batch, gru_model, loss_function)
+        print ('accuraccy on test set is {}'.format(t_acc))
+
 
     writer.add_scalar('dev/Loss', float(loss), batch_idx)
     writer.add_scalar('dev/Acc', acc, batch_idx)
@@ -169,7 +237,13 @@ for batch_idx, batch in enumerate(train_iter):
     if train_iter.epoch % 1 == 0:
         print ('epoch {} iteration {} max acc {} at step {} \n'.format(
             train_iter.epoch, batch_idx, max_acc, acc_step))
+        # save attention weights from dev set
+        if config['attention']:
+            get_attention_weights(
+                dev_batch, gru_model, inputs.vocab, answers.vocab)
+
     if train_iter.epoch > 13:
+        # save sentence vectors
         _, _, h_l_r = perform_forward_pass(
             dev_batch, gru_model, loss_function)
         # out_embd = torch.cat((h_l_r.data, torch.ones(len(h_l_r), 1)), 1)

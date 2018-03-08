@@ -110,7 +110,7 @@ class RNN_encoder(nn.Module):
         fc_out = self.linear(attented_representations)
         log_softmax = F.log_softmax(fc_out, dim=1)
 
-        return log_softmax, attented_representations
+        return log_softmax, attented_representations, attention_weights
 
 
 class Attention(nn.Module):

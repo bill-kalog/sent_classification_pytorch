@@ -110,4 +110,7 @@ test/*
 .data/*
 .vector_cache/*
 
+# files
+weights.json
+
 
