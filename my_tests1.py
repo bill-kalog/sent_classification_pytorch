@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import json
 from IPython import embed
+import os
 
 
 # library for using tensorboard with pytorch check
@@ -65,11 +66,16 @@ def perform_forward_pass(
     return acc, loss, h_l
 
 
-def get_attention_weights(d_batch, model, vocab_input, vocab_output):
+def get_attention_weights(d_batch, model, vocab_input, vocab_output, file_path,
+                          step, filename):
     '''
     save attention distributions in a json file
     '''
-    file_path = 'weights'
+    attention_dir = os.path.join(file_path, 'attention_weights')
+    attention_file = os.path.join(attention_dir, filename + '_' + str(step))
+    if not os.path.exists(attention_dir):
+        os.makedirs(attention_dir)
+
     l_probs, h_l, attention_weights = model(
         d_batch.text[0], sentences_length=d_batch.text[1])
     _, predictions = torch.max(l_probs.data, 1)
@@ -110,10 +116,9 @@ def get_attention_weights(d_batch, model, vocab_input, vocab_output):
         #     "text": int2text
 
         # }
-    json.dump(dic_, open(file_path + ".json", 'w'), indent="\t")
+    json.dump(dic_, open(attention_file + ".json", 'w'), indent="\t")
     print("Saved attention weights file at: {}".format(
-        file_path + ".json"))
-    embed()
+        attention_file + ".json"))
 
 
 def train_step(d_batch, model, optimizer, loss_function):
@@ -128,7 +133,7 @@ def train_step(d_batch, model, optimizer, loss_function):
 
 
 writer = SummaryWriter()
-
+writer_path = list(writer.all_writers.keys())[0]
 
 
 train, dev, test, inputs, answers = load_data()
@@ -240,7 +245,8 @@ for batch_idx, batch in enumerate(train_iter):
         # save attention weights from dev set
         if config['attention']:
             get_attention_weights(
-                dev_batch, gru_model, inputs.vocab, answers.vocab)
+                dev_batch, gru_model, inputs.vocab, answers.vocab,
+                writer_path, batch_idx, 'dev_set')
 
     if train_iter.epoch > 13:
         # save sentence vectors
