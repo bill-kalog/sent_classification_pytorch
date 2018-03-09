@@ -23,7 +23,8 @@ from tensorboardX import SummaryWriter
 
 config = {'attention': True}
 
-def load_data():
+
+def load_data(chosen_dataset, chosen_dataset_name):
     '''
     load data, split dataset and create vocabulary
     '''
@@ -32,13 +33,20 @@ def load_data():
     answers = data.Field(
         sequential=False)
 
-    train, dev, test = SST_SENT.splits(inputs, answers)
+    if chosen_dataset_name == 'SST_SENT':
+        train, dev, test = chosen_dataset.splits(inputs, answers)
+    else:
+        train, dev, test = data.TabularDataset.splits(
+            path='.data/First MTurk batch', train='train_firstBatch.csv',
+            validation='valid_firstBatch.csv', test='test_firstBatch.csv',
+            format='csv', fields=[('label', answers), ('text', inputs)])
+
     print('Building vocabulary')
     inputs.build_vocab(train, dev, test)
     inputs.vocab.load_vectors('glove.6B.300d')
 
     answers.build_vocab(train)
-
+    # embed()
     return train, dev, test, inputs, answers
 
 
@@ -136,21 +144,44 @@ writer = SummaryWriter()
 writer_path = list(writer.all_writers.keys())[0]
 
 
-train, dev, test, inputs, answers = load_data()
+# pick which dataset to load
+# train, dev, test, inputs, answers = load_data(SST_SENT, 'SST_SENT')
+train, dev, test, inputs, answers = load_data('CSV_FILE', 'CSV_FILE')
+
 # create data iterators sort_within_batch=True sort batches in descending
 # length order that is needed for nn.pack_padded_sequence
-train_iter, dev_iter, test_iter = data.BucketIterator.splits(
-    (train, dev, test), batch_size=100, device=0, sort_within_batch=True)
+# train_iter, dev_iter, test_iter = data.BucketIterator.splits(
+#     (train, dev, test), batch_size=100, device=0, sort_within_batch=True)
+# train_iter.init_epoch()
+
+# # that is a silly work around in order to have all the dev set in one batch
+# dev_iter2, test_iter2 = data.BucketIterator.splits(
+#     (dev, test), batch_size=len(dev.examples), device=0, sort_within_batch=True)
+# dev_iter2.init_epoch()
+
+# dev_iter3, test_iter3 = data.BucketIterator.splits(
+#     (dev, test), batch_size=len(test.examples), device=0, sort_within_batch=True)
+# test_iter3.init_epoch()
+
+
+
+# train_iter, dev_iter2, test_iter3 = data.BucketIterator.splits(
+#     (train, dev, test),
+#     batch_sizes=(100, len(dev.examples), len(test.examples)),
+#     device=0, sort_within_batch=True)
+
+train_iter, dev_iter2, test_iter3 = data.BucketIterator.splits(
+    (train, dev, test),
+    batch_sizes=(100, len(dev.examples), len(test.examples)),
+    sort_key=lambda x: len(x.text), device=0, sort_within_batch=True)
+
+
+
+# embed()
 train_iter.init_epoch()
-
-# that is a silly work around in order to have all the dev set in one batch
-dev_iter2, test_iter2 = data.BucketIterator.splits(
-    (dev, test), batch_size=len(dev.examples), device=0, sort_within_batch=True)
 dev_iter2.init_epoch()
-
-dev_iter3, test_iter3 = data.BucketIterator.splits(
-    (dev, test), batch_size=len(test.examples), device=0, sort_within_batch=True)
 test_iter3.init_epoch()
+
 
 
 # define a model
@@ -248,7 +279,7 @@ for batch_idx, batch in enumerate(train_iter):
                 dev_batch, gru_model, inputs.vocab, answers.vocab,
                 writer_path, batch_idx, 'dev_set')
 
-    if train_iter.epoch > 13:
+    if train_iter.epoch > 23:
         # save sentence vectors
         _, _, h_l_r = perform_forward_pass(
             dev_batch, gru_model, loss_function)
