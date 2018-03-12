@@ -8,6 +8,7 @@ from torchtext import datasets
 from sst_sent import SST_SENT
 from sequential_models import RNN_s
 from sequential_models import RNN_encoder
+from utils import load_data
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,30 +26,7 @@ from tensorboardX import SummaryWriter
 config = {'attention': True}
 
 
-def load_data(chosen_dataset, chosen_dataset_name):
-    '''
-    load data, split dataset and create vocabulary
-    '''
-    inputs = data.Field(
-        lower=True, include_lengths=True, batch_first=True)
-    answers = data.Field(
-        sequential=False)
 
-    if chosen_dataset_name == 'SST_SENT':
-        train, dev, test = chosen_dataset.splits(inputs, answers)
-    else:
-        train, dev, test = data.TabularDataset.splits(
-            path='.data/First MTurk batch', train='train_firstBatch.csv',
-            validation='valid_firstBatch.csv', test='test_firstBatch.csv',
-            format='csv', fields=[('label', answers), ('text', inputs)])
-
-    print('Building vocabulary')
-    inputs.build_vocab(train, dev, test)
-    inputs.vocab.load_vectors('glove.6B.300d')
-
-    answers.build_vocab(train)
-    # embed()
-    return train, dev, test, inputs, answers
 
 
 def perform_forward_pass(
@@ -58,6 +36,7 @@ def perform_forward_pass(
     and return its loss and accuracy
     '''
     if config['attention']:
+        embed()
         l_probs, h_l, attention_weights = model(
             d_batch.text[0], sentences_length=d_batch.text[1])
     else:
