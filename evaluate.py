@@ -51,8 +51,6 @@ while True:
     len_x_t = Variable(len_x_t.type(
         torch.cuda.LongTensor), requires_grad=False)
 
-    # len_x_t = Variable(len_x, requires_grad=False)
-
     l_probs, h_l, attention_weights = model(x, len_x_t.data)
 
     _, predictions = torch.max(l_probs.data, 1)

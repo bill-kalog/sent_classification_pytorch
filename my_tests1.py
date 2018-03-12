@@ -36,7 +36,6 @@ def perform_forward_pass(
     and return its loss and accuracy
     '''
     if config['attention']:
-        embed()
         l_probs, h_l, attention_weights = model(
             d_batch.text[0], sentences_length=d_batch.text[1])
     else:
@@ -48,10 +47,16 @@ def perform_forward_pass(
     loss = loss_function(l_probs, d_batch.label - 1)
     # calculate accuracy
     _, predictions = torch.max(l_probs.data, 1)
+    k_ = 5
+    topk_classes = torch.topk(l_probs.data, k_)[1] + 1
+    filter_ = torch.eq(topk_classes, d_batch.label.data.unsqueeze(1))
+
+    # embed()
     acc = sum(predictions == d_batch.label.data - 1) \
         / predictions.size()[0]
+    acc_k = sum(sum(filter_)) / predictions.size()[0]
 
-    return acc, loss, h_l
+    return acc, loss, h_l, acc_k
 
 
 def get_attention_weights(d_batch, model, vocab_input, vocab_output, file_path,
@@ -194,6 +199,7 @@ train_acc_list = []
 dev_losses_list = []
 dev_acc_list = []
 max_acc = 0
+max_acc_k = 0
 acc_step = 0
 save_graph_of_model = True
 print ('Starting training procedure')
@@ -209,7 +215,7 @@ for batch_idx, batch in enumerate(train_iter):
 
     # pass training batch
     # acc, loss, _ = perform_forward_pass(batch, gru_model, loss_function)
-    acc, loss, _ = perform_forward_pass(
+    acc, loss, _, acc_k = perform_forward_pass(
         batch, gru_model, loss_function)
 
     loss.backward()
@@ -224,13 +230,14 @@ for batch_idx, batch in enumerate(train_iter):
     gru_model.eval()
     dev_batch = next(iter(dev_iter2))
     # acc, loss, _ = perform_forward_pass(dev_batch, gru_model, loss_function)
-    acc, loss, _ = perform_forward_pass(
+    acc, loss, _, acc_k = perform_forward_pass(
         dev_batch, gru_model, loss_function)
 
     dev_acc_list.append(acc)
     dev_losses_list.append(float(loss))
     if max_acc < acc:
         max_acc = acc
+        max_acc_k = acc_k
         acc_step = batch_idx
         # save a snapshot of the new best model, example:
         # https://github.com/pytorch/examples/blob/master/snli/train.py
@@ -247,9 +254,10 @@ for batch_idx, batch in enumerate(train_iter):
         #### test the current best model against our test set ####
         # TODO
         test_batch = next(iter(test_iter3))
-        t_acc, t_loss, _ = perform_forward_pass(
+        t_acc, t_loss, _, acc_k = perform_forward_pass(
             test_batch, gru_model, loss_function)
-        print ('accuraccy on test set is {}'.format(t_acc))
+        print ('accuraccy on test set is {} and at topk {}'.format(
+            t_acc, acc_k))
 
 
     writer.add_scalar('dev/Loss', float(loss), batch_idx)
@@ -265,17 +273,17 @@ for batch_idx, batch in enumerate(train_iter):
 
     # info and stop criteria
     if train_iter.epoch % 1 == 0:
-        print ('epoch {} iteration {} max acc {} at step {} \n'.format(
-            train_iter.epoch, batch_idx, max_acc, acc_step))
+        print ('epoch {} iteration {} max acc {} at k {} at step {} \n'.format(
+            train_iter.epoch, batch_idx, max_acc, max_acc_k, acc_step))
         # save attention weights from dev set
         if config['attention']:
             get_attention_weights(
                 dev_batch, gru_model, inputs.vocab, answers.vocab,
                 writer_path, batch_idx, 'dev_set')
 
-    if train_iter.epoch > 13:
+    if train_iter.epoch > 14:
         # save sentence vectors
-        _, _, h_l_r = perform_forward_pass(
+        _, _, h_l_r, _ = perform_forward_pass(
             dev_batch, gru_model, loss_function)
         # out_embd = torch.cat((h_l_r.data, torch.ones(len(h_l_r), 1)), 1)
         out_embd = h_l_r.data[:, :, None]
