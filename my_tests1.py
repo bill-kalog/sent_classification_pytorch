@@ -14,6 +14,7 @@ import numpy as np
 import json
 from IPython import embed
 import os
+import glob
 
 
 # library for using tensorboard with pytorch check
@@ -142,7 +143,9 @@ def train_step(d_batch, model, optimizer, loss_function):
 
 writer = SummaryWriter()
 writer_path = list(writer.all_writers.keys())[0]
-
+best_model_path = os.path.join(writer_path, 'best_dev_model')
+if not os.path.exists(best_model_path):
+        os.makedirs(best_model_path)
 
 # pick which dataset to load
 # train, dev, test, inputs, answers = load_data(SST_SENT, 'SST_SENT')
@@ -250,6 +253,18 @@ for batch_idx, batch in enumerate(train_iter):
     if max_acc < acc:
         max_acc = acc
         acc_step = batch_idx
+        # save a snapshot of the new best model, example:
+        # https://github.com/pytorch/examples/blob/master/snli/train.py
+        best_model_file_path = os.path.join(
+            best_model_path, '_devacc_{}_devloss_{}__iter_{}_model.pt'.format(
+                max_acc, float(loss), batch_idx))
+        torch.save(gru_model, best_model_file_path)
+        # delete any previous model stored
+        for f in glob.glob(os.path.join(best_model_path, '*')):
+            if f != best_model_file_path:
+                os.remove(f)
+
+
         #### test the current best model against our test set ####
         # TODO
         test_batch = next(iter(test_iter3))
@@ -279,7 +294,7 @@ for batch_idx, batch in enumerate(train_iter):
                 dev_batch, gru_model, inputs.vocab, answers.vocab,
                 writer_path, batch_idx, 'dev_set')
 
-    if train_iter.epoch > 23:
+    if train_iter.epoch > 13:
         # save sentence vectors
         _, _, h_l_r = perform_forward_pass(
             dev_batch, gru_model, loss_function)
