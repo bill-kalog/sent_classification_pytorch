@@ -1,5 +1,4 @@
 from torchtext import data
-# import six
 
 
 class ExampleMy(data.Example):

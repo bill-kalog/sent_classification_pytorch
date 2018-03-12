@@ -9,6 +9,7 @@ from sst_sent import SST_SENT
 from sequential_models import RNN_s
 from sequential_models import RNN_encoder
 from utils import load_data
+from conf import config
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -22,11 +23,6 @@ import glob
 # https://github.com/lanpa/tensorboard-pytorch
 # https://medium.com/@dexterhuang/tensorboard-for-pytorch-201a228533c5
 from tensorboardX import SummaryWriter
-
-config = {'attention': True}
-
-
-
 
 
 def perform_forward_pass(
@@ -47,7 +43,7 @@ def perform_forward_pass(
     loss = loss_function(l_probs, d_batch.label - 1)
     # calculate accuracy
     _, predictions = torch.max(l_probs.data, 1)
-    k_ = 5
+    k_ = config['k_']
     topk_classes = torch.topk(l_probs.data, k_)[1] + 1
     filter_ = torch.eq(topk_classes, d_batch.label.data.unsqueeze(1))
 
@@ -141,11 +137,9 @@ train_iter, dev_iter2, test_iter3 = data.BucketIterator.splits(
     sort_key=lambda x: len(x.text), device=0, sort_within_batch=True)
 
 
-
 train_iter.init_epoch()
 dev_iter2.init_epoch()
 test_iter3.init_epoch()
-
 
 
 # define a model
@@ -259,7 +253,7 @@ for batch_idx, batch in enumerate(train_iter):
                 writer_path, batch_idx, 'dev_set')
 
     if train_iter.epoch > 14:
-        # save sentence vectors
+        # save_embeddings to tensorboard
         _, _, h_l_r, _ = perform_forward_pass(
             dev_batch, gru_model, loss_function)
         # out_embd = torch.cat((h_l_r.data, torch.ones(len(h_l_r), 1)), 1)
@@ -268,10 +262,6 @@ for batch_idx, batch in enumerate(train_iter):
             h_l_r.data, metadata=dev_batch.label.data, global_step=batch_idx)
         # embed()
         break
-
-
-# save_embeddings to tensorboard
-
 
 
 writer.close()

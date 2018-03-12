@@ -24,5 +24,4 @@ def load_data(chosen_dataset, chosen_dataset_name):
     inputs.vocab.load_vectors('glove.6B.300d')
 
     answers.build_vocab(train)
-    # embed()
     return train, dev, test, inputs, answers

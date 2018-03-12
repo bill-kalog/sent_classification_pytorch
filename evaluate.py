@@ -1,27 +1,21 @@
 
 import torch
-import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 
-from torchtext import data
-from torchtext import datasets
-
-from sst_sent import SST_SENT
-from sequential_models import RNN_s
-from sequential_models import RNN_encoder
 from utils import load_data
-
-import matplotlib.pyplot as plt
 import numpy as np
-import json
 from IPython import embed
 import os
 import glob
 
 root_path = '/home/vasilis/Documents/pytorch_ex/pt_ex1_6march/runs/'
-snapshot_path = 'Mar12_16-12-46_vasilis-MS-7A33/best_dev_model/_devacc_0.9027777777777778_devloss_0.5821027755737305__iter_110_model.pt'
-_filepath = root_path + snapshot_path
+# specify the folder name
+folder_ = 'Mar12_17-58-03_vasilis-MS-7A33'
+snapshot_path = os.path.join(root_path, folder_)
+# retrieve the path to the saved model
+_filepath = glob.glob(os.path.join(snapshot_path, 'best_dev_model', '*'))[0]
+
 gpu_id = 0
 model = torch.load(
     _filepath,
@@ -29,8 +23,8 @@ model = torch.load(
 model.eval()
 
 # loading dataset in order to get vocabulary
+# TODO somehow should only load the saved fields and not the whole dataset
 train, dev, test, inputs, answers = load_data('CSV_FILE', 'CSV_FILE')
-
 input_vocab = inputs.vocab
 
 
@@ -59,7 +53,7 @@ while True:
     _, predictions = torch.max(l_probs.data, 1)
     _, predictions_soft = torch.max(prob_distr.data, 1)
     verdict = answers.vocab.itos[sum(predictions + 1)]
-    print ("\nyour sentence: '{}' is of class {}\n".format(
+    print ("\nyour sentence: '{}' is of class: {}\n".format(
         prepr_sent, verdict))
     print ("weight distribution {}".format(attention_weights))
     k_ = 5

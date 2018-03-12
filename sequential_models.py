@@ -45,18 +45,9 @@ class RNN_s(nn.Module):
         packed_vectors = torch.nn.utils.rnn.pack_padded_sequence(
             word_vectors_transposed, sentences_length)
 
-
         output, h_n = self.rnn(packed_vectors)
         output, output_lengths = torch.nn.utils.rnn.pad_packed_sequence(
             output)
-
-        # print(output.size())
-        # print (output[:, -1, :].size())
-        # print(h_n.size())
-        # print (output)
-        # print ()
-        # output.view(output.size(0)*output.size(1)
-        # embed()
 
         last_hidden_layer = torch.cat((h_n[0], h_n[1]), 1)
         # embed()
@@ -86,11 +77,12 @@ class RNN_encoder(nn.Module):
 
     def forward(self, input_sentences, sentences_length, hidden_vectors=None):
         '''
-        
+        forward pass
         '''
         word_vectors = self.embed(input_sentences)
         # put seqeunce length as first dimension
         word_vectors_transposed = word_vectors.transpose(1, 0)
+        self.encoder.flatten_parameters()
         # Pack a Variable containing padded sequences of variable length.
         packed_vectors = torch.nn.utils.rnn.pack_padded_sequence(
             word_vectors_transposed, sentences_length.tolist())
@@ -120,11 +112,18 @@ class Attention(nn.Module):
         self.hidden_dim = hidden_dim
         # use a single fc layer to get a score
         self.att_nn = nn.Linear(self.hidden_dim, 1)
+        # self.linear2 = nn.Linear(self.hidden_dim, 200)
+        # self.linear3 = nn.Linear(200, 1)
 
     def forward(self, encoder_output):
         # attention scores dim [max_len, batch_size, 1]
         attention_scores = self.att_nn(encoder_output)
+
+        # put one more layer in the calculation
+        # relu_1 = F.relu(self.linear2(encoder_output))
+        # attention_scores = self.linear3(relu_1)
+
         # transform to a distribution. dim [max_len, batch_size, 1] -> [len, bsize]
         attention_distribution = F.softmax(attention_scores, 0).squeeze(2)
-        
+
         return attention_distribution
