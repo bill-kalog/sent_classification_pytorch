@@ -12,6 +12,17 @@ Get it using:
 pip install torchtext
 ```
 
+### tokenization
+if you want to use some more advanced tokenization technique with [torchtext](https://github.com/pytorch/text/tree/master/torchtext) do make sure
+you have [spacy](https://spacy.io/) installed using:
+```bash
+pip install -U spacy
+```
+then download the English models using:
+```bash
+python -m spacy download en
+```
+
 ### use tensorboard on pytorch
 
 check the [tensorboard-pytorch](https://github.com/lanpa/tensorboard-pytorch) repo.

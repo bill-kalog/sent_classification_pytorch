@@ -2,6 +2,7 @@
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+import torch.nn.functional as F
 
 from torchtext import data
 from torchtext import datasets
@@ -18,9 +19,8 @@ from IPython import embed
 import os
 import glob
 
-
 root_path = '/home/vasilis/Documents/pytorch_ex/pt_ex1_6march/runs/'
-snapshot_path = 'Mar12_10-04-43_vasilis-MS-7A33/best_dev_model/_devacc_0.803030303030303_devloss_0.8549262285232544__iter_100_model.pt'
+snapshot_path = 'Mar12_16-12-46_vasilis-MS-7A33/best_dev_model/_devacc_0.9027777777777778_devloss_0.5821027755737305__iter_110_model.pt'
 _filepath = root_path + snapshot_path
 gpu_id = 0
 model = torch.load(
@@ -40,7 +40,8 @@ while True:
         continue
 
     # translate sentence to vocabulary ids
-    senttnum = [inputs.vocab.stoi[ind] for ind in input_var.split()]
+    prepr_sent = inputs.preprocess(input_var)
+    senttnum = [inputs.vocab.stoi[ind] for ind in prepr_sent]
 
     # reshape to be [batch, size] and load in a tensor variable
     x = torch.from_numpy(np.array(senttnum).reshape((1, len(senttnum))))
@@ -52,16 +53,21 @@ while True:
         torch.cuda.LongTensor), requires_grad=False)
 
     l_probs, h_l, attention_weights = model(x, len_x_t.data)
+    # get distributions
+    prob_distr = F.softmax(l_probs, dim=1)
 
     _, predictions = torch.max(l_probs.data, 1)
+    _, predictions_soft = torch.max(prob_distr.data, 1)
     verdict = answers.vocab.itos[sum(predictions + 1)]
-    print ('\nyour sentence: {} is of class {}\n'.format(input_var, verdict))
-    print ("weight distibution {}".format(attention_weights))
+    print ("\nyour sentence: '{}' is of class {}\n".format(
+        prepr_sent, verdict))
+    print ("weight distribution {}".format(attention_weights))
     k_ = 5
-    topk_classes = torch.topk(l_probs.data, k_)
+    topk_classes = torch.topk(prob_distr.data, k_)
     topk_classes_list = topk_classes[1].tolist()[0]
+    topk_prob_list = topk_classes[0].tolist()[0]
     print ("the top {} classes where: ".format(k_))
 
-    for c_i in topk_classes_list:
+    for idx, c_i in enumerate(topk_classes_list):
         class_i = answers.vocab.itos[c_i + 1]
-        print ("{} ".format(class_i))
+        print ("{}, prob : {} ".format(class_i, topk_prob_list[idx]))

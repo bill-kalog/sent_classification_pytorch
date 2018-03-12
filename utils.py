@@ -7,7 +7,7 @@ def load_data(chosen_dataset, chosen_dataset_name):
     load data, split dataset and create vocabulary
     '''
     inputs = data.Field(
-        lower=True, include_lengths=True, batch_first=True)
+        lower=True, include_lengths=True, batch_first=True, tokenize='spacy')
     answers = data.Field(
         sequential=False)
 
@@ -15,7 +15,7 @@ def load_data(chosen_dataset, chosen_dataset_name):
         train, dev, test = chosen_dataset.splits(inputs, answers)
     else:
         train, dev, test = data.TabularDataset.splits(
-            path='.data/First MTurk batch', train='train_firstBatch.csv',
+            path='.data/ReParse_first_batch', train='train_firstBatch.csv',
             validation='valid_firstBatch.csv', test='test_firstBatch.csv',
             format='csv', fields=[('label', answers), ('text', inputs)])
 

@@ -135,28 +135,6 @@ if not os.path.exists(best_model_path):
 # train, dev, test, inputs, answers = load_data(SST_SENT, 'SST_SENT')
 train, dev, test, inputs, answers = load_data('CSV_FILE', 'CSV_FILE')
 
-# create data iterators sort_within_batch=True sort batches in descending
-# length order that is needed for nn.pack_padded_sequence
-# train_iter, dev_iter, test_iter = data.BucketIterator.splits(
-#     (train, dev, test), batch_size=100, device=0, sort_within_batch=True)
-# train_iter.init_epoch()
-
-# # that is a silly work around in order to have all the dev set in one batch
-# dev_iter2, test_iter2 = data.BucketIterator.splits(
-#     (dev, test), batch_size=len(dev.examples), device=0, sort_within_batch=True)
-# dev_iter2.init_epoch()
-
-# dev_iter3, test_iter3 = data.BucketIterator.splits(
-#     (dev, test), batch_size=len(test.examples), device=0, sort_within_batch=True)
-# test_iter3.init_epoch()
-
-
-
-# train_iter, dev_iter2, test_iter3 = data.BucketIterator.splits(
-#     (train, dev, test),
-#     batch_sizes=(100, len(dev.examples), len(test.examples)),
-#     device=0, sort_within_batch=True)
-
 train_iter, dev_iter2, test_iter3 = data.BucketIterator.splits(
     (train, dev, test),
     batch_sizes=(100, len(dev.examples), len(test.examples)),
@@ -164,7 +142,6 @@ train_iter, dev_iter2, test_iter3 = data.BucketIterator.splits(
 
 
 
-# embed()
 train_iter.init_epoch()
 dev_iter2.init_epoch()
 test_iter3.init_epoch()
