@@ -8,6 +8,7 @@ from torchtext import datasets
 from sst_sent import SST_SENT
 from sequential_models import RNN_s
 from sequential_models import RNN_encoder
+from convolutional_models import CNN_encoder
 from utils import load_data
 from conf import config
 
@@ -31,7 +32,10 @@ def perform_forward_pass(
     perform the forward pass of a model  for a given batch of data
     and return its loss and accuracy
     '''
-    if config['attention']:
+    if config['cnn']:
+        l_probs, h_l, attention_weights = model(
+            d_batch.text[0], sentences_length=d_batch.text[1])
+    elif config['attention']:
         l_probs, h_l, attention_weights = model(
             d_batch.text[0], sentences_length=d_batch.text[1])
     else:
@@ -143,26 +147,33 @@ test_iter3.init_epoch()
 
 
 # define a model
-# gru_model = RNN_s(
+# dnn_model = RNN_s(
 #     input_dim=inputs.vocab.vectors.size()[1],
 #     output_dim=200,
 #     num_classes=len(answers.vocab.freqs.keys()),
 #     vocab=inputs.vocab)
-# gru_model.cuda(0)
+# dnn_model.cuda(0)
 
-
-gru_model = RNN_encoder(
-    input_dim=inputs.vocab.vectors.size()[1],
-    output_dim=200,
-    num_classes=len(answers.vocab.freqs.keys()),
-    vocab=inputs.vocab)
-gru_model.cuda(0)
+if config['cnn']:
+    dnn_model = CNN_encoder(
+        input_dim=inputs.vocab.vectors.size()[1],
+        output_dim=200,
+        num_classes=len(answers.vocab.freqs.keys()),
+        vocab=inputs.vocab)
+    dnn_model.cuda(0)
+else:
+    dnn_model = RNN_encoder(
+        input_dim=inputs.vocab.vectors.size()[1],
+        output_dim=200,
+        num_classes=len(answers.vocab.freqs.keys()),
+        vocab=inputs.vocab)
+    dnn_model.cuda(0)
 
 
 # define loss funtion and optimizer
 loss_function = nn.NLLLoss()
-optimizer = optim.Adam(gru_model.parameters())
-# optimizer = optim.SGD(gru_model.parameters(), lr=0.01, momentum=0.9)
+optimizer = optim.Adam(dnn_model.parameters())
+# optimizer = optim.SGD(dnn_model.parameters(), lr=0.01, momentum=0.9)
 
 # define list to stores training info
 train_losses_list = []
@@ -178,16 +189,16 @@ print ('Starting training procedure')
 for batch_idx, batch in enumerate(train_iter):
 
     # switch to to training mode,zero out gradients
-    gru_model.train()
+    dnn_model.train()
     optimizer.zero_grad()
 
-    # train_step(batch, gru_model, optimizer, loss_function)
+    # train_step(batch, dnn_model, optimizer, loss_function)
     # TODO refactor training loop
 
     # pass training batch
-    # acc, loss, _ = perform_forward_pass(batch, gru_model, loss_function)
+    # acc, loss, _ = perform_forward_pass(batch, dnn_model, loss_function)
     acc, loss, _, acc_k = perform_forward_pass(
-        batch, gru_model, loss_function)
+        batch, dnn_model, loss_function)
 
     loss.backward()
     optimizer.step()
@@ -198,11 +209,11 @@ for batch_idx, batch in enumerate(train_iter):
     writer.add_scalar('train/Acc', acc, batch_idx)
 
     # check dev set accuraccy
-    gru_model.eval()
+    dnn_model.eval()
     dev_batch = next(iter(dev_iter2))
-    # acc, loss, _ = perform_forward_pass(dev_batch, gru_model, loss_function)
+    # acc, loss, _ = perform_forward_pass(dev_batch, dnn_model, loss_function)
     acc, loss, _, acc_k = perform_forward_pass(
-        dev_batch, gru_model, loss_function)
+        dev_batch, dnn_model, loss_function)
 
     dev_acc_list.append(acc)
     dev_losses_list.append(float(loss))
@@ -215,7 +226,7 @@ for batch_idx, batch in enumerate(train_iter):
         best_model_file_path = os.path.join(
             best_model_path, '_devacc_{}_devloss_{}__iter_{}_model.pt'.format(
                 max_acc, float(loss), batch_idx))
-        torch.save(gru_model, best_model_file_path)
+        torch.save(dnn_model, best_model_file_path)
         # delete any previous model stored
         for f in glob.glob(os.path.join(best_model_path, '*')):
             if f != best_model_file_path:
@@ -226,7 +237,7 @@ for batch_idx, batch in enumerate(train_iter):
         # TODO
         test_batch = next(iter(test_iter3))
         t_acc, t_loss, _, acc_k = perform_forward_pass(
-            test_batch, gru_model, loss_function)
+            test_batch, dnn_model, loss_function)
         print ('accuraccy on test set is {} and at topk {}'.format(
             t_acc, acc_k))
 
@@ -236,7 +247,7 @@ for batch_idx, batch in enumerate(train_iter):
 
     # getting tracing of legacy functions not supported error
     # if save_graph_of_model:
-    #     writer.add_graph(gru_model, (dev_batch.text[0], ))
+    #     writer.add_graph(dnn_model, (dev_batch.text[0], ))
     #     save_graph_of_model = False
 
     # for code aboout checkpionting check
@@ -249,13 +260,13 @@ for batch_idx, batch in enumerate(train_iter):
         # save attention weights from dev set
         if config['attention']:
             get_attention_weights(
-                dev_batch, gru_model, inputs.vocab, answers.vocab,
+                dev_batch, dnn_model, inputs.vocab, answers.vocab,
                 writer_path, batch_idx, 'dev_set')
 
-    if train_iter.epoch > 14:
+    if train_iter.epoch > config['epochs']:
         # save_embeddings to tensorboard
         _, _, h_l_r, _ = perform_forward_pass(
-            dev_batch, gru_model, loss_function)
+            dev_batch, dnn_model, loss_function)
         # out_embd = torch.cat((h_l_r.data, torch.ones(len(h_l_r), 1)), 1)
         out_embd = h_l_r.data[:, :, None]
         writer.add_embedding(

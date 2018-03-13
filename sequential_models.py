@@ -82,6 +82,7 @@ class RNN_encoder(nn.Module):
         word_vectors = self.embed(input_sentences)
         # put seqeunce length as first dimension
         word_vectors_transposed = word_vectors.transpose(1, 0)
+        # force weights to exist in a continuous chank of memory
         self.encoder.flatten_parameters()
         # Pack a Variable containing padded sequences of variable length.
         packed_vectors = torch.nn.utils.rnn.pack_padded_sequence(

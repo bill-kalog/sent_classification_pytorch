@@ -12,6 +12,7 @@ import glob
 root_path = '/home/vasilis/Documents/pytorch_ex/pt_ex1_6march/runs/'
 # specify the folder name
 folder_ = 'Mar12_17-58-03_vasilis-MS-7A33'
+folder_ = 'Mar13_17-15-07_vasilis-MS-7A33'
 snapshot_path = os.path.join(root_path, folder_)
 # retrieve the path to the saved model
 _filepath = glob.glob(os.path.join(snapshot_path, 'best_dev_model', '*'))[0]
