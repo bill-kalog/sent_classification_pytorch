@@ -2,6 +2,7 @@
 import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
+from sst_sent import SST_SENT
 
 from utils import load_data
 import numpy as np
@@ -13,6 +14,7 @@ root_path = '/home/vasilis/Documents/pytorch_ex/pt_ex1_6march/runs/'
 # specify the folder name
 folder_ = 'Mar12_17-58-03_vasilis-MS-7A33'
 folder_ = 'Mar13_17-15-07_vasilis-MS-7A33'
+# folder_ = 'Mar14_14-55-44_vasilis-MS-7A33'  # this is from sst dataset
 snapshot_path = os.path.join(root_path, folder_)
 # retrieve the path to the saved model
 _filepath = glob.glob(os.path.join(snapshot_path, 'best_dev_model', '*'))[0]
@@ -26,6 +28,7 @@ model.eval()
 # loading dataset in order to get vocabulary
 # TODO somehow should only load the saved fields and not the whole dataset
 train, dev, test, inputs, answers = load_data('CSV_FILE', 'CSV_FILE')
+# train, dev, test, inputs, answers = load_data(SST_SENT, 'SST_SENT')
 input_vocab = inputs.vocab
 
 

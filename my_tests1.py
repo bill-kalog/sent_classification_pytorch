@@ -25,7 +25,6 @@ import glob
 # https://medium.com/@dexterhuang/tensorboard-for-pytorch-201a228533c5
 from tensorboardX import SummaryWriter
 
-
 def perform_forward_pass(
         d_batch, model, loss_function):
     '''
@@ -51,11 +50,9 @@ def perform_forward_pass(
     topk_classes = torch.topk(l_probs.data, k_)[1] + 1
     filter_ = torch.eq(topk_classes, d_batch.label.data.unsqueeze(1))
 
-    # embed()
-    acc = sum(predictions == d_batch.label.data - 1) \
+    acc = torch.sum(torch.eq(predictions, d_batch.label.data - 1)) \
         / predictions.size()[0]
-    acc_k = sum(sum(filter_)) / predictions.size()[0]
-
+    acc_k = torch.sum(filter_) / predictions.size()[0]
     return acc, loss, h_l, acc_k
 
 

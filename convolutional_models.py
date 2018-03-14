@@ -51,14 +51,13 @@ class CNN_encoder(nn.Module):
         position_ids.resize_as_(input_sentences.data)
         position_ids = Variable(position_ids)
 
-        
         # positional_embd = self.position_embedding(position_ids)
 
         word_vectors = self.embed(input_sentences)
 
         # input_embd = F.dropout(
         #     positional_embd + word_vectors, self.dropout)
-        input_embd = F.dropout(word_vectors, self.dropout)
+        input_embd = F.dropout(word_vectors, self.dropout, self.training)
 
         input_embd = input_embd.transpose(1, 2)
         # embed()
