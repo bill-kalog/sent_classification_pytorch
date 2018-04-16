@@ -9,6 +9,7 @@ from sst_sent import SST_SENT
 from sequential_models import RNN_s
 from sequential_models import RNN_encoder
 from convolutional_models import CNN_encoder
+import transformer_models
 from utils import load_data
 from conf import config
 
@@ -25,6 +26,7 @@ import glob
 # https://medium.com/@dexterhuang/tensorboard-for-pytorch-201a228533c5
 from tensorboardX import SummaryWriter
 
+
 def perform_forward_pass(
         d_batch, model, loss_function):
     '''
@@ -37,6 +39,9 @@ def perform_forward_pass(
     elif config['attention']:
         l_probs, h_l, attention_weights = model(
             d_batch.text[0], sentences_length=d_batch.text[1])
+    elif config['transformer']:
+        # TODO
+        model.forward(d_batch.text[0], sentences_length=d_batch.text[1])
     else:
         # get log probabilities
         l_probs, h_l = model(
@@ -158,6 +163,15 @@ if config['cnn']:
         num_classes=len(answers.vocab.freqs.keys()),
         vocab=inputs.vocab)
     dnn_model.cuda(0)
+    # define loss funtion and optimizer
+    loss_function = nn.NLLLoss()
+    optimizer = optim.Adam(dnn_model.parameters())
+elif config['transformer']:
+    dnn_model = transformer_models.make_model(
+        src_vocab=input.vocab, d_model=inputs.vocab.vectors.size()[1])
+    dnn_model.cuda(0)
+    # TODO add loss criterion
+    pass
 else:
     dnn_model = RNN_encoder(
         input_dim=inputs.vocab.vectors.size()[1],
@@ -165,11 +179,12 @@ else:
         num_classes=len(answers.vocab.freqs.keys()),
         vocab=inputs.vocab)
     dnn_model.cuda(0)
+    # define loss funtion and optimizer
+    loss_function = nn.NLLLoss()
+    optimizer = optim.Adam(dnn_model.parameters())
 
 
-# define loss funtion and optimizer
-loss_function = nn.NLLLoss()
-optimizer = optim.Adam(dnn_model.parameters())
+
 # optimizer = optim.SGD(dnn_model.parameters(), lr=0.01, momentum=0.9)
 
 # define list to stores training info
