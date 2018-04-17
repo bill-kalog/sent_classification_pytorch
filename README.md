@@ -4,6 +4,8 @@ Some of the code structure is based on examples from [spro](https://github.com/s
 At the moment the following models are implemented:
 * vanilla RNN with GRU cells `class RNN_s`
 * vanilla RNN with GRU cells and attention on top `class RNN_encoder`
+* CNN with attention on top `class CNN_encoder`
+* a transformer encoder in `transformer_models.py`
 
 ### install torchtext
 in order to run this code apart from [PyTorch](http://pytorch.org/) you need [torchtext](https://github.com/pytorch/text/tree/master/torchtext) too.

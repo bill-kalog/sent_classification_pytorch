@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from IPython import embed
 from torch.autograd import Variable
+from sequential_models import Attention
 import copy
 import math
 
@@ -24,6 +25,9 @@ class EncoderDecoder(nn.Module):
         self.num_classes = num_classes
         self.fc_class = nn.Linear(self.dim, self.num_classes)
 
+        # weighted sum attention
+        self.calc_attention_values = Attention(self.dim)
+
     def forward(self, src, src_mask=None):
         "Take in and process masked src and target sequences."
         return self.calculateLogits(self.encode(src, src_mask))
@@ -35,7 +39,22 @@ class EncoderDecoder(nn.Module):
         # embed()
         # just sum all dimesnsions (bag of words) no attention
         fc_out = self.fc_class(torch.sum(net_output, dim=1))
+        
+        # or take just the last step
+        # fc_out = net_output[:, -1, :]
+        # fc_out = self.fc_class(fc_out)
+        # embed()
+         
+
+        # or do weighted sum attention
+        # embed()
+        # attention_weights = self.calc_attention_values(net_output)
+        # attention_weights = attention_weights.unsqueeze(1)
+        # attented_representations = attention_weights.bmm(net_output).squeeze(1)
+        # fc_out = self.fc_class(attented_representations)
+
         log_softmax = F.log_softmax(fc_out, dim=1)
+
         return log_softmax, fc_out
 
 

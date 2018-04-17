@@ -168,6 +168,10 @@ if config['cnn']:
     # define loss funtion and optimizer
     loss_function = nn.NLLLoss()
     optimizer = optim.Adam(dnn_model.parameters())
+    # warmup = 400
+    # optimizer = NoamOpt(inputs.vocab.vectors.size()[1], 1, warmup,
+    #                     torch.optim.Adam(dnn_model.parameters(), lr=0,
+    #                                      betas=(0.9, 0.98), eps=1e-9))
 elif config['transformer']:
     dnn_model = transformer_models.make_model(
         src_vocab=inputs.vocab,
