@@ -16,17 +16,27 @@ class EncoderDecoder(nn.Module):
     other models.
     Here we are actutally using only an encoder though
     """
-    def __init__(self, encoder, src_embed):
+    def __init__(self, encoder, src_embed, dim, num_classes):
         super(EncoderDecoder, self).__init__()
         self.encoder = encoder
         self.src_embed = src_embed
+        self.dim = dim
+        self.num_classes = num_classes
+        self.fc_class = nn.Linear(self.dim, self.num_classes)
 
-    def forward(self, src, tgt, src_mask, tgt_mask):
+    def forward(self, src, src_mask=None):
         "Take in and process masked src and target sequences."
-        return self.encode(src, src_mask)
+        return self.calculateLogits(self.encode(src, src_mask))
 
-    def encode(self, src, src_mask):
+    def encode(self, src, src_mask=None):
         return self.encoder(self.src_embed(src), src_mask)
+
+    def calculateLogits(self, net_output):
+        # embed()
+        # just sum all dimesnsions (bag of words) no attention
+        fc_out = self.fc_class(torch.sum(net_output, dim=1))
+        log_softmax = F.log_softmax(fc_out, dim=1)
+        return log_softmax, fc_out
 
 
 class Encoder(nn.Module):
@@ -38,8 +48,9 @@ class Encoder(nn.Module):
         self.layers = clones(layer, N_layers)
         self.norm = LayerNorm(layer.size)
 
-    def forward(self, x, mask):
+    def forward(self, x, mask=None):
         "Pass the input (and mask) through each layer in turn."
+        # embed()
         for layer in self.layers:
             x = layer(x, mask)
         return self.norm(x)
@@ -113,6 +124,11 @@ class MultiHeadedAttention(nn.Module):
         super(MultiHeadedAttention, self).__init__()
         assert d_model % h == 0
         # We assume d_v always equals d_k, dim(d_model)==suggested(512)
+        '''
+        since we are using pretrained word vectors of dim 300. In our case
+        we will be using d_model=300 number of heads== 5 and as a result
+        the d_k will be 60
+        '''
         self.d_k = d_model // h  # dimensionality suggested 64
         self.h = h  # number of heads i.e num attention layers suggested 8
         self.linears = clones(nn.Linear(d_model, d_model), 4)
@@ -125,12 +141,11 @@ class MultiHeadedAttention(nn.Module):
             # Same mask applied to all h heads.
             mask = mask.unsqueeze(1)
         nbatches = query.size(0)
-
         # 1) Do all the linear projections in batch from d_model => h x d_k
         query, key, value = \
             [l(x).view(nbatches, -1, self.h, self.d_k).transpose(1, 2)
              for l, x in zip(self.linears, (query, key, value))]
-
+        # embed()
         # 2) Apply attention on all the projected vectors in batch.
         x, self.attn = attention(query, key, value, mask=mask,
                                  dropout=self.dropout)
@@ -187,7 +202,7 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 
 
-def make_model(src_vocab, N=6,
+def make_model(src_vocab, num_classes, N=6,
                d_model=512, d_ff=2048, h=8, dropout=0.1):
     "Helper: Construct a model from hyperparameters."
     c = copy.deepcopy
@@ -196,7 +211,8 @@ def make_model(src_vocab, N=6,
     position = PositionalEncoding(d_model, dropout)
     model = EncoderDecoder(
         Encoder(EncoderLayer(d_model, c(attn), c(ff), dropout), N),
-        nn.Sequential(Embeddings(d_model, src_vocab), c(position))
+        nn.Sequential(Embeddings(d_model, src_vocab), c(position)),
+        d_model, num_classes
     )
 
     # This was important from their code.

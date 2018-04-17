@@ -41,7 +41,8 @@ def perform_forward_pass(
             d_batch.text[0], sentences_length=d_batch.text[1])
     elif config['transformer']:
         # TODO
-        model.forward(d_batch.text[0], sentences_length=d_batch.text[1])
+        # model.forward(d_batch.text[0], sentences_length=d_batch.text[1])
+        l_probs, h_l = model.forward(d_batch.text[0])
     else:
         # get log probabilities
         l_probs, h_l = model(
@@ -168,9 +169,14 @@ if config['cnn']:
     optimizer = optim.Adam(dnn_model.parameters())
 elif config['transformer']:
     dnn_model = transformer_models.make_model(
-        src_vocab=input.vocab, d_model=inputs.vocab.vectors.size()[1])
+        src_vocab=inputs.vocab,
+        num_classes=len(answers.vocab.freqs.keys()),
+        d_model=inputs.vocab.vectors.size()[1],
+        h=5)
     dnn_model.cuda(0)
-    # TODO add loss criterion
+    # TODO add loss criterion that is just a placeholder
+    loss_function = nn.NLLLoss()
+    optimizer = optim.Adam(dnn_model.parameters())
     pass
 else:
     dnn_model = RNN_encoder(
@@ -240,6 +246,7 @@ for batch_idx, batch in enumerate(train_iter):
                 max_acc, float(loss), batch_idx))
         torch.save(dnn_model, best_model_file_path)
         # delete any previous model stored
+        print (best_model_file_path)
         for f in glob.glob(os.path.join(best_model_path, '*')):
             if f != best_model_file_path:
                 os.remove(f)
