@@ -10,6 +10,7 @@ from sequential_models import RNN_s
 from sequential_models import RNN_encoder
 from convolutional_models import CNN_encoder
 import transformer_models
+from transformer_models import NoamOpt
 from utils import load_data
 from conf import config
 
@@ -176,7 +177,12 @@ elif config['transformer']:
     dnn_model.cuda(0)
     # TODO add loss criterion that is just a placeholder
     loss_function = nn.NLLLoss()
-    optimizer = optim.Adam(dnn_model.parameters())
+    # optimizer = optim.Adam(dnn_model.parameters())
+    warmup = 400
+    optimizer = NoamOpt(inputs.vocab.vectors.size()[1], 1, warmup,
+                        torch.optim.Adam(dnn_model.parameters(), lr=0,
+                                         betas=(0.9, 0.98), eps=1e-9))
+    # embed()
     pass
 else:
     dnn_model = RNN_encoder(
