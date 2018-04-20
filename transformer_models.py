@@ -38,24 +38,28 @@ class EncoderDecoder(nn.Module):
     def calculateLogits(self, net_output):
         # embed()
         # just sum all dimesnsions (bag of words) no attention
-        fc_out = self.fc_class(torch.sum(net_output, dim=1))
-        
-        # or take just the last step
-        # fc_out = net_output[:, -1, :]
-        # fc_out = self.fc_class(fc_out)
-        # embed()
-         
+        # sent_repr = torch.sum(net_output, dim=1)
 
-        # or do weighted sum attention
-        # embed()
-        # attention_weights = self.calc_attention_values(net_output)
-        # attention_weights = attention_weights.unsqueeze(1)
-        # attented_representations = attention_weights.bmm(net_output).squeeze(1)
-        # fc_out = self.fc_class(attented_representations)
+        # average dimensions
+        # sent_repr = torch.sum(net_output, dim=1) / net_output.size()[1]
+
+        # or take just the last step
+        # sent_repr = net_output[:, -1]
+
+        # or use attention instead
+        # get attention weights [sent_length, batch_size]
+        attention_weights = self.calc_attention_values(
+            net_output.transpose(0, 1))
+        # back to [batch, 1, length]
+        attention_weights = attention_weights.transpose(1, 0).unsqueeze(1)
+        # attented_representations
+        sent_repr = attention_weights.bmm(net_output).squeeze(1)
+
+        fc_out = self.fc_class(sent_repr)
 
         log_softmax = F.log_softmax(fc_out, dim=1)
 
-        return log_softmax, fc_out
+        return log_softmax, sent_repr, attention_weights
 
 
 class Encoder(nn.Module):
@@ -216,8 +220,7 @@ class PositionalEncoding(nn.Module):
         self.register_buffer('pe', pe)
 
     def forward(self, x):
-        x = x + Variable(self.pe[:, :x.size(1)],
-                         requires_grad=False)
+        x = x + Variable(self.pe[:, :x.size(1)], requires_grad=False)
         return self.dropout(x)
 
 
@@ -226,6 +229,7 @@ def make_model(src_vocab, num_classes, N=6,
     "Helper: Construct a model from hyperparameters."
     c = copy.deepcopy
     attn = MultiHeadedAttention(h, d_model)
+    # d_ff = 100
     ff = PositionwiseFeedForward(d_model, d_ff, dropout)
     position = PositionalEncoding(d_model, dropout)
     model = EncoderDecoder(

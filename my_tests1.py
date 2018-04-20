@@ -37,13 +37,13 @@ def perform_forward_pass(
     if config['cnn']:
         l_probs, h_l, attention_weights = model(
             d_batch.text[0], sentences_length=d_batch.text[1])
-    elif config['attention']:
-        l_probs, h_l, attention_weights = model(
-            d_batch.text[0], sentences_length=d_batch.text[1])
     elif config['transformer']:
         # TODO
         # model.forward(d_batch.text[0], sentences_length=d_batch.text[1])
-        l_probs, h_l = model.forward(d_batch.text[0])
+        l_probs, h_l, attention_weights = model.forward(d_batch.text[0])
+    elif config['attention']:
+        l_probs, h_l, attention_weights = model(
+            d_batch.text[0], sentences_length=d_batch.text[1])
     else:
         # get log probabilities
         l_probs, h_l = model(
@@ -72,9 +72,11 @@ def get_attention_weights(d_batch, model, vocab_input, vocab_output, file_path,
     attention_file = os.path.join(attention_dir, filename + '_' + str(step))
     if not os.path.exists(attention_dir):
         os.makedirs(attention_dir)
-
-    l_probs, h_l, attention_weights = model(
-        d_batch.text[0], sentences_length=d_batch.text[1])
+    if config['transformer']:
+        l_probs, h_l, attention_weights = model.forward(d_batch.text[0])
+    else:
+        l_probs, h_l, attention_weights = model(
+            d_batch.text[0], sentences_length=d_batch.text[1])
     _, predictions = torch.max(l_probs.data, 1)
     dic_ = {}
     for sentence_counter in range(len(d_batch.text[0])):
@@ -136,8 +138,8 @@ if not os.path.exists(best_model_path):
         os.makedirs(best_model_path)
 
 # pick which dataset to load
-# train, dev, test, inputs, answers = load_data(SST_SENT, 'SST_SENT')
-train, dev, test, inputs, answers = load_data('CSV_FILE', 'CSV_FILE')
+train, dev, test, inputs, answers = load_data(SST_SENT, 'SST_SENT')
+# train, dev, test, inputs, answers = load_data('CSV_FILE', 'CSV_FILE')
 
 train_iter, dev_iter2, test_iter3 = data.BucketIterator.splits(
     (train, dev, test),
