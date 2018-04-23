@@ -40,7 +40,7 @@ def perform_forward_pass(
     elif config['transformer']:
         # TODO
         # model.forward(d_batch.text[0], sentences_length=d_batch.text[1])
-        l_probs, h_l, attention_weights = model.forward(d_batch.text[0])
+        l_probs, h_l = model.forward(d_batch.text[0])
     elif config['attention']:
         l_probs, h_l, attention_weights = model(
             d_batch.text[0], sentences_length=d_batch.text[1])

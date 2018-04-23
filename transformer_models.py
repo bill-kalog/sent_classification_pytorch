@@ -41,25 +41,25 @@ class EncoderDecoder(nn.Module):
         # sent_repr = torch.sum(net_output, dim=1)
 
         # average dimensions
-        # sent_repr = torch.sum(net_output, dim=1) / net_output.size()[1]
+        # sent_repr = torch.sum(net_output, dim=1) / net_output.size()[1] # converges/overfits a bit faster
 
         # or take just the last step
-        # sent_repr = net_output[:, -1]
+        sent_repr = net_output[:, -1] # converges slower
 
-        # or use attention instead
+        # or use attention instead but it performs a bit bad and scores a bad too
         # get attention weights [sent_length, batch_size]
-        attention_weights = self.calc_attention_values(
-            net_output.transpose(0, 1))
-        # back to [batch, 1, length]
-        attention_weights = attention_weights.transpose(1, 0).unsqueeze(1)
-        # attented_representations
-        sent_repr = attention_weights.bmm(net_output).squeeze(1)
-
+        # attention_weights = self.calc_attention_values(
+        #     net_output.transpose(0, 1))
+        # # back to [batch, 1, length]
+        # attention_weights = attention_weights.transpose(1, 0).unsqueeze(1)
+        # # attented_representations
+        # sent_repr = attention_weights.bmm(net_output).squeeze(1)
+        # embed()
         fc_out = self.fc_class(sent_repr)
 
         log_softmax = F.log_softmax(fc_out, dim=1)
 
-        return log_softmax, sent_repr, attention_weights
+        return log_softmax, sent_repr  #, attention_weights
 
 
 class Encoder(nn.Module):
