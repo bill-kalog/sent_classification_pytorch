@@ -180,6 +180,11 @@ elif config['transformer']:
         num_classes=len(answers.vocab.freqs.keys()),
         d_model=inputs.vocab.vectors.size()[1],
         h=5)
+    # dnn_model = transformer_models.make_model(
+    #     src_vocab=inputs.vocab,
+    #     num_classes=len(answers.vocab.freqs.keys()),
+    #     d_model=512,
+    #     h=8)
     dnn_model.cuda(0)
     # TODO add loss criterion that is just a placeholder
     loss_function = nn.NLLLoss()

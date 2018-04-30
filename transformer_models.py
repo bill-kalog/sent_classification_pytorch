@@ -24,6 +24,7 @@ class EncoderDecoder(nn.Module):
         self.dim = dim
         self.num_classes = num_classes
         self.fc_class = nn.Linear(self.dim, self.num_classes)
+        self.mos_module = MoS(dim, 15, num_classes)
 
         # weighted sum attention
         self.calc_attention_values = Attention(self.dim)
@@ -44,7 +45,7 @@ class EncoderDecoder(nn.Module):
         # sent_repr = torch.sum(net_output, dim=1) / net_output.size()[1] # converges/overfits a bit faster
 
         # or take just the last step
-        sent_repr = net_output[:, -1] # converges slower
+        sent_repr = net_output[:, -1]  # converges slower
 
         # or use attention instead but it performs a bit bad and scores a bad too
         # get attention weights [sent_length, batch_size]
@@ -55,11 +56,61 @@ class EncoderDecoder(nn.Module):
         # # attented_representations
         # sent_repr = attention_weights.bmm(net_output).squeeze(1)
         # embed()
-        fc_out = self.fc_class(sent_repr)
 
-        log_softmax = F.log_softmax(fc_out, dim=1)
+        if False:
+            # normal softmax
+            fc_out = self.fc_class(sent_repr)
+
+            log_softmax = F.log_softmax(fc_out, dim=1)
+        else:
+            # or check the mixture of softmaxes module
+            log_softmax = self.mos_module(sent_repr)
 
         return log_softmax, sent_repr  #, attention_weights
+
+
+class MoS(nn.Module):
+    """
+        implementation of the mixture of softmaxes module MoS
+        http://smerity.com/articles/2017/mixture_of_softmaxes.html
+    """
+    def __init__(self, hidden_dim, k_num, num_classes):
+        super(MoS, self).__init__()
+        self.k_num = k_num
+        self.hidden_dim = hidden_dim
+        self.num_classes = num_classes
+        self.projections = nn.Linear(hidden_dim, hidden_dim * k_num)
+        self.calculate_ps = nn.Linear(hidden_dim, k_num)
+        self.fc_class = nn.Linear(hidden_dim, num_classes)
+
+    def forward(self, hidden_state):
+        nl_projections = torch.tanh(self.projections(hidden_state))
+        # split into k parts
+        parts = torch.chunk(nl_projections, self.k_num, dim=1)
+        # calculate p_k
+        p_k = self.calculate_ps(hidden_state)
+        p_k_dist = F.softmax(p_k, dim=-1).unsqueeze(2)
+
+        # loop over the k different vectors
+        results = []
+        for part in parts:
+            results.append(
+                torch.nn.functional.log_softmax(
+                    self.fc_class(part), dim=-1))
+        result = torch.cat(results, dim=1).view(
+            -1, self.k_num, self.num_classes)
+        # p_k_dist = torch.autograd.Variable(torch.ones(100, 15, 1) * (1 / 15)).type(torch.cuda.FloatTensor)
+        # embed()
+        result = torch.log(p_k_dist) + result
+        result = logsumexp(result).view(-1, self.num_classes)
+        return result
+
+
+# This is a numerically stable log(sum(exp(x))) operator (from smerity)
+def logsumexp(x):
+    max_x, _ = torch.max(x, dim=1, keepdim=True)
+    part = torch.log(torch.sum(torch.exp(x - max_x), dim=1, keepdim=True))
+    return max_x + part
 
 
 class Encoder(nn.Module):
@@ -195,12 +246,12 @@ class Embeddings(nn.Module):
     def __init__(self, d_model, vocab):
         super(Embeddings, self).__init__()
         self.embed = nn.Embedding(len(vocab), d_model).type(dtype)
-        self.embed.weight.data.copy_(vocab.vectors)
+        # self.embed.weight.data.copy_(vocab.vectors)
         self.d_model = d_model
 
     def forward(self, x):
         # return self.lut(x) * math.sqrt(self.d_model)
-        return self.embed(x)
+        return self.embed(x) #* math.sqrt(self.d_model)
 
 
 class PositionalEncoding(nn.Module):
@@ -225,7 +276,7 @@ class PositionalEncoding(nn.Module):
 
 
 def make_model(src_vocab, num_classes, N=6,
-               d_model=512, d_ff=2048, h=8, dropout=0.1):
+               d_model=512, d_ff=1024, h=8, dropout=0.1):
     "Helper: Construct a model from hyperparameters."
     c = copy.deepcopy
     attn = MultiHeadedAttention(h, d_model)

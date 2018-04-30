@@ -5,7 +5,7 @@ import glob
 from torchtext import data
 from my_example import ExampleMy
 
-flag_phrases = False
+flag_phrases = True
 # use code from:
 # https://github.com/pytorch/text/blob/master/torchtext/datasets/sst.py
 
@@ -16,9 +16,9 @@ class SST_SENT(data.Dataset):
     https://github.com/harvardnlp/sent-conv-torch
     '''
     # links without phrases
-    urls = ['https://raw.githubusercontent.com/harvardnlp/sent-conv-torch/master/data/stsa.fine.dev', 'https://raw.githubusercontent.com/harvardnlp/sent-conv-torch/master/data/stsa.fine.test', 'https://raw.githubusercontent.com/harvardnlp/sent-conv-torch/master/data/stsa.fine.train']
+    # urls = ['https://raw.githubusercontent.com/harvardnlp/sent-conv-torch/master/data/stsa.fine.dev', 'https://raw.githubusercontent.com/harvardnlp/sent-conv-torch/master/data/stsa.fine.test', 'https://raw.githubusercontent.com/harvardnlp/sent-conv-torch/master/data/stsa.fine.train']
     # links with phrases on train set
-    # urls = ['https://raw.githubusercontent.com/harvardnlp/sent-conv-torch/master/data/stsa.fine.dev', 'https://raw.githubusercontent.com/harvardnlp/sent-conv-torch/master/data/stsa.fine.test', 'https://raw.githubusercontent.com/harvardnlp/sent-conv-torch/master/data/stsa.fine.phrases.train']
+    urls = ['https://raw.githubusercontent.com/harvardnlp/sent-conv-torch/master/data/stsa.fine.dev', 'https://raw.githubusercontent.com/harvardnlp/sent-conv-torch/master/data/stsa.fine.test', 'https://raw.githubusercontent.com/harvardnlp/sent-conv-torch/master/data/stsa.fine.phrases.train']
 
     name = 'SST_SENTIMENT'
     dirname = ''
